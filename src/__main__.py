@@ -9,7 +9,7 @@ import pywren_ibm_cloud
 
 
 def main(args):
-    num = random.randint(0,1000)
+    num = random.randint(0,500)
     
     print(num)
     
