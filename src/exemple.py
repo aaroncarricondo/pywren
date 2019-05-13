@@ -10,23 +10,23 @@ import pywren_ibm_cloud as pywren
 iterdata = range(int(sys.argv[1]))
 
 
-lista = []
-contador = 0
+array = []
+counter = 0
 
 def my_map_function(ide):
     
-    
-    
     def callback(channel, method, header, body):
-        global lista
-        global contador
+        
+        global array
+        global counter
         # We've received numDiv messages, stop consuming
         channel.basic_ack(delivery_tag = method.delivery_tag)
-        lista.append(body.decode('utf-8'))
-        contador = contador + 1
-        if (contador >= len(iterdata)): 
+        
+        #Append random number to array and increment counter
+        array.append(body.decode('utf-8'))
+        counter = counter + 1
+        if (counter >= len(iterdata)): 
             channel.stop_consuming()
-    
     
     
     if (ide == 0):
@@ -38,30 +38,22 @@ def my_map_function(ide):
         waiting = []
     
     
-    
     params = pika.URLParameters(str(os.environ.get('rabbit')))
     connection = pika.BlockingConnection(params)
     channel = connection.channel() # start a channel
-    #channel.exchange_declare(exchange='logs', exchange_type='fanout')
     
     num = random.randint(0,200)
     channel.basic_publish(exchange='logs', routing_key='', body=str(num))
-    
+    #Associate
     channel.basic_consume(callback, queue=str(ide))
     
-    #time.sleep(5)
-    
+    #Start consuming and processing values
     channel.start_consuming()
     
+    #Close connection to the channel for auto-deleting queues
+    connection.close()
     
-    return lista
-
-
-    #Define function when consuming
-    #channel.basic_consume(callback, queue=str(ide))
-    
-    #Bind queue to exchange
-    #channel.queue_bind(exchange='logs', queue=str(ide))
+    return array
 
 
 
@@ -74,7 +66,6 @@ with open('ibm_cloud_config', 'r') as config_file:
         
 #Get URL
 rabbit = res['ibm_rabbit']
-
 # Declare connection and new queue on RABBITAMQ
 params = pika.URLParameters(str(rabbit))
 connection = pika.BlockingConnection(params)
@@ -82,27 +73,23 @@ channel = connection.channel() # start a channel
 channel.exchange_declare(exchange='logs', exchange_type='fanout')
 
 
-
 #----------------------
-#----- QUEUE ------
+#----- QUEUES ------
 for i in iterdata:
-    channel.queue_delete(str(i))
-    channel.queue_declare(queue=str(i))
+    channel.queue_declare(queue=str(i), auto_delete=True)
     channel.queue_bind(exchange='logs', queue=str(i))
-    
 
-
+#Execute functions
 pw = pywren.ibm_cf_executor();
 extra_env={'rabbit' : rabbit}
 pw.map(my_map_function, iterdata, extra_env = extra_env)
 result = pw.get_result()
 
-file = open("salidaxd.txt", "w")
-
+#Print results on a file
+file = open("results.txt", "w")
 for i in result:
     file.write(str(i)+ "\n")
-
 file.close()
 
-
-print("TODO OK")
+#Close connection to the channel for auto-deleting queues
+connection.close()
