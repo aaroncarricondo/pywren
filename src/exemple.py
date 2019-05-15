@@ -9,24 +9,21 @@ import pywren_ibm_cloud as pywren
 
 iterdata = range(int(sys.argv[1]))
 
-def my_master_function():
-    
-    array = []
-    counter = 0
+def my_master_function(n):
     
     def callback_master(channel, method, header, body):
-        
-        nonlocal counter 
-        nonlocal array 
-        # We've received numDiv messages, stop consuming
-        channel.basic_ack(delivery_tag = method.delivery_tag)
-        
-        #Append random number to array and increment counter
-        array.append(body.decode('utf-8'))
-        counter = counter + 1
-        if (counter >= len(iterdata)): 
-            channel.stop_consuming()
-    
+            
+            nonlocal counter 
+            nonlocal array 
+            # We've received numDiv messages, stop consuming
+            channel.basic_ack(delivery_tag = method.delivery_tag)
+            
+            #Append random number to array and increment counter
+            array.append(body.decode('utf-8'))
+            counter = counter + 1
+            if (counter >= len(iterdata)): 
+                channel.stop_consuming()
+                
     
     params = pika.URLParameters(str(os.environ.get('rabbit')))
     connection = pika.BlockingConnection(params)
@@ -35,20 +32,22 @@ def my_master_function():
     channel.queue_declare(queue='master', auto_delete=True)
     
     channel.basic_consume(callback_master, queue='master')
-    channel.start_consuming()
     
-    num = random.randint(0,len(iterdata)) - 1
-    
-    write = array[num]
-    
-    channel.basic_publish(exchange='logs', routing_key='', body='W ' + write)
-    
+    for i in range(1, len(iterdata)):
+        array = []
+        counter = 0
+        
+        channel.start_consuming()
+        
+        num = random.randint(0,len(iterdata)) - 1
+        
+        write = array[num]
+        
+        channel.basic_publish(exchange='logs', routing_key='', body='W ' + write)
     
     
     connection.close()
     
-    
-
 
 def my_map_function(ide):
     
@@ -120,6 +119,9 @@ for i in iterdata:
 #Execute functions
 pw = pywren.ibm_cf_executor();
 extra_env={'rabbit' : rabbit}
+
+pw.call_async(func=my_master_function, data=3 , extra_env = extra_env)
+
 pw.map(my_map_function, iterdata, extra_env = extra_env)
 result = pw.get_result()
 
