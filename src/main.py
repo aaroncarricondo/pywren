@@ -11,6 +11,10 @@ iterdata = range(int(sys.argv[1]))
 
 def my_master_function(n):
     
+    #Initialize the array and counter for consuming writing desires
+    array = []
+    counter = 0
+    
     def callback_master(channel, method, header, body):
             
             nonlocal counter 
@@ -30,20 +34,22 @@ def my_master_function(n):
     channel = connection.channel() # start a channel
     
     channel.queue_declare(queue='master', auto_delete=True)
-    
     channel.basic_consume(callback_master, queue='master')
+    #Start consuming writers petitions (IDs)
+    channel.start_consuming()
+    
+    num_writers = len(iterdata) - 1
     
     for i in range(1, len(iterdata)):
-        array = []
-        counter = 0
         
-        channel.start_consuming()
+        num = random.randint(0,num_writers)
         
-        num = random.randint(0,len(iterdata)) - 1
-        
+        #Take id that will write and remove it from the writers desire to write
         write = array[num]
+        del array[num]
         
         channel.basic_publish(exchange='logs', routing_key='', body='W ' + write)
+        num_writers = num_writers - 1
     
     
     connection.close()
@@ -62,11 +68,12 @@ def my_map_function(ide):
         channel.basic_ack(delivery_tag = method.delivery_tag)
         
         body = body.decode('utf-8')
-        header, body = body.split(' ')
         
-        if (header == 'W'):
+        body = body.split()
+        
+        if (len(body) == 2):
             
-            if (body == str(ide)):
+            if (body[1] == str(ide)):
                 channel.basic_publish(exchange='logs', routing_key='', body=str(num))
                 
         else:
@@ -76,6 +83,7 @@ def my_map_function(ide):
             if (counter >= len(iterdata)): 
                 channel.stop_consuming()
     
+    #Create connection to RabbitAMQP
     params = pika.URLParameters(str(os.environ.get('rabbit')))
     connection = pika.BlockingConnection(params)
     channel = connection.channel() # start a channel
@@ -85,7 +93,7 @@ def my_map_function(ide):
     #Publish want to write (ide) in the topic queue of the master
     channel.basic_publish(exchange='', routing_key='master', body= str(ide))
     
-    #Associate
+    #Associate callback_function to queue
     channel.basic_consume(callback, queue=str(ide))
     #Start consuming and processing values
     channel.start_consuming()
