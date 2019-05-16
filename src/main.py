@@ -32,7 +32,7 @@ def my_master_function(n):
     params = pika.URLParameters(str(os.environ.get('rabbit')))
     connection = pika.BlockingConnection(params)
     channel = connection.channel() # start a channel
-    
+    #Declare queue
     channel.queue_declare(queue='master', auto_delete=True)
     channel.basic_consume(callback_master, queue='master')
     #Start consuming writers petitions (IDs)
@@ -40,7 +40,7 @@ def my_master_function(n):
     
     num_writers = len(iterdata) - 1
     
-    for i in range(1, len(iterdata)):
+    for i in range(0, len(iterdata)):
         
         num = random.randint(0,num_writers)
         
@@ -64,16 +64,18 @@ def my_map_function(ide):
         
         nonlocal counter 
         nonlocal array 
+        
         # We've received numDiv messages, stop consuming
         channel.basic_ack(delivery_tag = method.delivery_tag)
         
         body = body.decode('utf-8')
         
-        body = body.split()
+        body_list = body.split()
         
-        if (len(body) == 2):
+        if (len(body_list) == 2):
             
-            if (body[1] == str(ide)):
+            if (body_list[1] == str(ide)):
+                num = random.randint(0,200)
                 channel.basic_publish(exchange='logs', routing_key='', body=str(num))
                 
         else:
@@ -117,9 +119,16 @@ rabbit = res['ibm_rabbit']
 params = pika.URLParameters(str(rabbit))
 connection = pika.BlockingConnection(params)
 channel = connection.channel() # start a channel
+
+#----------------------------------------------------------------
+#----------------------- DELETE QUEUES --------------------------
+for i in range (0, 100):
+    channel.queue_delete(queue=str(i))
+
+#Declare the exchange queue (fanout) to share random numbers
 channel.exchange_declare(exchange='logs', exchange_type='fanout')
 
-
+#Declare queues for every map function and bind them to the fanout queue
 for i in iterdata:
     channel.queue_declare(queue=str(i), auto_delete=True)
     channel.queue_bind(exchange='logs', queue=str(i))
@@ -127,9 +136,9 @@ for i in iterdata:
 #Execute functions
 pw = pywren.ibm_cf_executor();
 extra_env={'rabbit' : rabbit}
-
+#Call asynchronous to master function
 pw.call_async(func=my_master_function, data=3 , extra_env = extra_env)
-
+#Execute map functions
 pw.map(my_map_function, iterdata, extra_env = extra_env)
 result = pw.get_result()
 
