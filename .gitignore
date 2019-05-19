@@ -1,1 +1,3 @@
 src/ibm_cloud_config
+*.txt
+*.zip

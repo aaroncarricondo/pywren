@@ -65,11 +65,9 @@ def my_map_function(ide):
         nonlocal counter 
         nonlocal array 
         
-        # We've received numDiv messages, stop consuming
         channel.basic_ack(delivery_tag = method.delivery_tag)
         
         body = body.decode('utf-8')
-        
         body_list = body.split()
         
         if (len(body_list) == 2):
@@ -122,13 +120,16 @@ channel = connection.channel() # start a channel
 
 #----------------------------------------------------------------
 #----------------------- DELETE QUEUES --------------------------
-for i in range (0, 100):
+print("Deleting previous queues . . .")
+for i in range (0, 20):
     channel.queue_delete(queue=str(i))
+    print("Deleted queue ", i)
 
 #Declare the exchange queue (fanout) to share random numbers
 channel.exchange_declare(exchange='logs', exchange_type='fanout')
 
 #Declare queues for every map function and bind them to the fanout queue
+print("Creating and binding map queues . . .")
 for i in iterdata:
     channel.queue_declare(queue=str(i), auto_delete=True)
     channel.queue_bind(exchange='logs', queue=str(i))
