@@ -41,7 +41,7 @@ def my_master_function(n):
     
     num_writers = len(iterdata) - 1
     
-    for i in range(0, len(iterdata)):
+    for _ in range(0, len(iterdata)):
         
         num = random.randint(0,num_writers)
         
@@ -88,8 +88,6 @@ def my_map_function(ide):
     params = pika.URLParameters(str(os.environ.get('rabbit')))
     connection = pika.BlockingConnection(params)
     channel = connection.channel() # start a channel
-    #Generate random
-    num = random.randint(0,200)
     
     #Publish want to write (ide) in the topic queue of the master
     channel.basic_publish(exchange='', routing_key='master', body= str(ide))
