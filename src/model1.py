@@ -6,6 +6,7 @@ Created on 8 may. 2019
 
 import random, yaml, pika, sys, os
 import pywren_ibm_cloud as pywren
+from pathlib import Path
 
 iterdata = range(int(sys.argv[1]))
 
@@ -105,12 +106,15 @@ def my_map_function(ide):
 
 
 #Load RabbitAMQP information
-with open('ibm_cloud_config', 'r') as config_file:
+config_path=str(Path.home())+'/.pywren_config'
+
+with open(config_path, 'r') as config_file:
     try:        
         res = yaml.safe_load(config_file)        
     except yaml.YAMLError as exc:        
         print(exc)
         
+
 #Get URL
 rabbit = res['ibm_rabbit']
 # Declare connection and new queue on RABBITAMQ
@@ -143,11 +147,17 @@ pw.call_async(func=my_master_function, data=3 , extra_env = extra_env)
 pw.map(my_map_function, iterdata, extra_env = extra_env)
 result = pw.get_result()
 
+#Delete first element because is the output of the master
+del result[0]
+
 #Print results on a file
 file = open("results.txt", "w")
+
 for i in result:
     file.write(str(i)+ "\n")
 file.close()
+
+
 
 #Close connection to the channel for auto-deleting queues
 connection.close()
