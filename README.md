@@ -1,10 +1,12 @@
+## Simple Mutual Exclusion with a Master
+
 This is a publisher suscriber simple model where a master function decides who is going to write in a exchange FanOut queue, where the information written is distributed to all the other functions binded to it.
 
-**A model example diagram:**
+### A model example diagram:
 
 ![alt text](https://i.ibb.co/R4n7B6P/Model1.png)
 
-**Execution:**
+### Execution:
 
   1.  First you need to have pywren correctly set up and have your configuration file with all the URLs in the path ~/.pywren_config 
       
