@@ -22,7 +22,6 @@ def my_master_function(n):
             nonlocal array 
             # We've received numDiv messages, stop consuming
             channel.basic_ack(delivery_tag = method.delivery_tag)
-            
             #Append random number to array and increment counter
             array.append(body.decode('utf-8'))
             counter = counter + 1
@@ -51,7 +50,6 @@ def my_master_function(n):
         
         channel.basic_publish(exchange='logs', routing_key='', body='W ' + write)
         num_writers = num_writers - 1
-    
     
     connection.close()
     
@@ -120,12 +118,6 @@ params = pika.URLParameters(str(rabbit))
 connection = pika.BlockingConnection(params)
 channel = connection.channel() # start a channel
 
-#----------------------------------------------------------------
-#----------------------- DELETE QUEUES --------------------------
-print("Deleting previous queues . . .")
-for i in range (0, 20):
-    channel.queue_delete(queue=str(i))
-    print("Deleted queue ", i)
 
 #Declare the exchange queue (fanout) to share random numbers
 channel.exchange_declare(exchange='logs', exchange_type='fanout')
@@ -140,9 +132,9 @@ for i in iterdata:
 pw = pywren.ibm_cf_executor();
 extra_env={'rabbit' : rabbit}
 #Call asynchronous to master function
-pw.call_async(func=my_master_function, data=3 , extra_env = extra_env)
+pw.call_async(func=my_master_function, data=3 , extra_env = extra_env, timeout=45)
 #Execute map functions
-pw.map(my_map_function, iterdata, extra_env = extra_env)
+pw.map(my_map_function, iterdata, extra_env = extra_env, timeout=45)
 result = pw.get_result()
 
 #Delete first element because is the output of the master
@@ -150,12 +142,9 @@ del result[0]
 
 #Print results on a file
 file = open("results.txt", "w")
-
 for i in result:
     file.write(str(i)+ "\n")
 file.close()
-
-
 
 #Close connection to the channel for auto-deleting queues
 connection.close()
