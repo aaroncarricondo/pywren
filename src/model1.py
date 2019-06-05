@@ -15,17 +15,19 @@ def my_master_function(n):
     #Initialize the array and counter for consuming writing desires
     array = []
     counter = 0
+    num_writers = len(iterdata)
     
     def callback_master(channel, method, header, body):
             
             nonlocal counter 
             nonlocal array 
+            nonlocal num_writers
             # We've received numDiv messages, stop consuming
             channel.basic_ack(delivery_tag = method.delivery_tag)
             #Append random number to array and increment counter
             array.append(body.decode('utf-8'))
             counter = counter + 1
-            if (counter >= len(iterdata)): 
+            if (counter > num_writers): 
                 channel.stop_consuming()
                 
     
@@ -35,20 +37,20 @@ def my_master_function(n):
     #Declare queue
     channel.queue_declare(queue='master', auto_delete=True)
     channel.basic_consume(callback_master, queue='master')
-    #Start consuming writers petitions (IDs)
-    channel.start_consuming()
     
-    num_writers = len(iterdata) - 1
     
-    for _ in range(0, len(iterdata)):
+    while (num_writers > 0):
+    
+        #Start consuming writers petitions (IDs)    
+        channel.start_consuming()
+    
+        #for _ in range(0, len(iterdata)):
         
-        num = random.randint(0,num_writers)
-        
+        num = random.randint(0,num_writers-1)
         
         #Take id that will write and remove it from the writers desire to write
         write = array[num]
         del array[num]
-        time.sleep(2)
         print("Sending write permission to "+ str(write) + " function . . .")
         
         channel.basic_publish(exchange='logs', routing_key='', body='W ' + write)
@@ -61,11 +63,13 @@ def my_map_function(ide):
     
     array = []
     counter = 0
+    writed = False
     
     def callback(channel, method, header, body):
         
         nonlocal counter 
-        nonlocal array 
+        nonlocal array
+        nonlocal writed
         
         channel.basic_ack(delivery_tag = method.delivery_tag)
         
@@ -78,6 +82,7 @@ def my_map_function(ide):
                 num = random.randint(0,200)
                 print("FunctionID" + str(ide) + " writing random number = " + str(num))
                 channel.basic_publish(exchange='logs', routing_key='', body=str(num))
+                writed = True
                 
         else:
             #Append random number to array and increment counter
@@ -86,6 +91,9 @@ def my_map_function(ide):
             counter = counter + 1
             if (counter >= len(iterdata)): 
                 channel.stop_consuming()
+            if (writed == False):
+                #Publish want to write (ide) in the topic queue of the master
+                channel.basic_publish(exchange='', routing_key='master', body= str(ide))
     
     #Create connection to RabbitAMQP
     params = pika.URLParameters(str(os.environ.get('rabbit')))
@@ -137,9 +145,9 @@ for i in iterdata:
 pw = pywren.ibm_cf_executor();
 extra_env={'rabbit' : rabbit}
 #Call asynchronous to master function
-pw.call_async(func=my_master_function, data=3 , extra_env = extra_env, timeout=50)
+pw.call_async(func=my_master_function, data=3 , extra_env = extra_env, timeout=100)
 #Execute map functions
-pw.map(my_map_function, iterdata, extra_env = extra_env, timeout=45)
+pw.map(my_map_function, iterdata, extra_env = extra_env, timeout=100)
 result = pw.get_result()
 
 #Delete first element because is the output of the master
