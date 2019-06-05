@@ -157,9 +157,9 @@ for i in iterdata:
 pw = pywren.ibm_cf_executor();
 extra_env={'rabbit' : rabbit}
 #Call asynchronous to master function
-pw.call_async(func=my_master_function, data=3 , extra_env = extra_env, timeout=10)
+pw.call_async(func=my_master_function, data=3 , extra_env = extra_env, timeout=25)
 #Execute map functions
-pw.map(my_map_function, iterdata, extra_env = extra_env, timeout=10)
+pw.map(my_map_function, iterdata, extra_env = extra_env, timeout=25)
 result = pw.get_result()
 
 #Delete first element because is the output of the master
