@@ -4,7 +4,7 @@ Created on 8 may. 2019
 @author: aaroni34
 '''
 
-import random, yaml, pika, sys, os
+import random, yaml, pika, sys, os, time
 import pywren_ibm_cloud as pywren
 from pathlib import Path
 
@@ -44,9 +44,12 @@ def my_master_function(n):
         
         num = random.randint(0,num_writers)
         
+        
         #Take id that will write and remove it from the writers desire to write
         write = array[num]
         del array[num]
+        time.sleep(2)
+        print("Sending write permission to "+ str(write) + " function . . .")
         
         channel.basic_publish(exchange='logs', routing_key='', body='W ' + write)
         num_writers = num_writers - 1
@@ -73,10 +76,12 @@ def my_map_function(ide):
             
             if (body_list[1] == str(ide)):
                 num = random.randint(0,200)
+                print("FunctionID" + str(ide) + " writing random number = " + str(num))
                 channel.basic_publish(exchange='logs', routing_key='', body=str(num))
                 
         else:
             #Append random number to array and increment counter
+            print("Function " + str(ide) + "reading  number '" + str(body) + "' in position " + str(len(array)))
             array.append(body)
             counter = counter + 1
             if (counter >= len(iterdata)): 
@@ -132,7 +137,7 @@ for i in iterdata:
 pw = pywren.ibm_cf_executor();
 extra_env={'rabbit' : rabbit}
 #Call asynchronous to master function
-pw.call_async(func=my_master_function, data=3 , extra_env = extra_env, timeout=45)
+pw.call_async(func=my_master_function, data=3 , extra_env = extra_env, timeout=50)
 #Execute map functions
 pw.map(my_map_function, iterdata, extra_env = extra_env, timeout=45)
 result = pw.get_result()
