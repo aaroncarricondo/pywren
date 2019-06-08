@@ -29,8 +29,8 @@ def my_master_function(n):
             #Append random number to array and increment counter
             array.append(body.decode('utf-8'))
             counter = counter + 1
-            
             if (counter >= num_writers): 
+                
                 channel.stop_consuming()
                 
     
@@ -39,6 +39,7 @@ def my_master_function(n):
     channel = connection.channel() # start a channel
     #Declare queue
     channel.queue_declare(queue='master')
+    
     
     
     while (num_writers > 0):
@@ -54,7 +55,8 @@ def my_master_function(n):
         del array[num]
         print("Sending write permission to "+ str(write) + " function . . .", flush=True)
         
-        channel.basic_publish(exchange='logs', routing_key='', body='W ' + write)
+        channel.basic_publish(exchange='topic_logs', routing_key=str(write), body='W ' + write)
+        
         num_writers = num_writers - 1
     
     connection.close()
@@ -137,18 +139,23 @@ channel = connection.channel() # start a channel
 
 #Declare the exchange queue (fanout) to share random numbers
 channel.exchange_declare(exchange='logs', exchange_type='fanout')
+#Declare the exchange queue (topic) to share permission writing
+channel.exchange_declare(exchange='topic_logs', exchange_type='topic')
 
 #Declare queues for every map function and bind them to the fanout queue
 print("Creating and binding map queues . . .")
 for i in iterdata:
     channel.queue_declare(queue=str(i), auto_delete=True)
     channel.queue_bind(exchange='logs', queue=str(i))
+    channel.queue_bind(exchange='topic_logs', queue=str(i), routing_key=str(i))
 
 #Execute functions
 pw = pywren.ibm_cf_executor();
 extra_env={'rabbit' : rabbit}
 #Call asynchronous to master function
 pw.call_async(func=my_master_function, data=3 , extra_env = extra_env, timeout=25)
+
+
 #Execute map functions
 pw.map(my_map_function, iterdata, extra_env = extra_env, timeout=25)
 result = pw.get_result()
