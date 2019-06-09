@@ -81,14 +81,14 @@ def my_map_function(ide):
         body = body.decode('utf-8')
         body_list = body.split()
         
+        #If message are two strings separated by a space, is write permission message from topic queue
         if (len(body_list) == 2):
             
-            if (body_list[1] == str(ide)):
-                num = random.randint(0,200)
-                print("FunctionID" + str(ide) + " writing random number = " + str(num),  flush=True)
-                channel.basic_publish(exchange='logs', routing_key='', body=str(num))
-                writed = True
-                
+            num = random.randint(0,200)
+            print("FunctionID" + str(ide) + " writing random number = " + str(num),  flush=True)
+            channel.basic_publish(exchange='logs', routing_key='', body=str(num))
+            writed = True
+            
         else:
             #Append random number to array and increment counter
             print("Function " + str(ide) + "reading  number '" + str(body) + "' in position " + str(len(array)), flush=True)
